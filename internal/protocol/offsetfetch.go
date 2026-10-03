@@ -6,7 +6,7 @@ type OffsetFetchTopic struct {
 	Partitions []int32
 }
 
-// OffsetFetchRequest is the OffsetFetch v7 request.
+// OffsetFetchRequest is the OffsetFetch v7 request. Version 7 is flexible (KIP-482).
 type OffsetFetchRequest struct {
 	GroupID   string
 	AllTopics bool // true when the topics array was null
@@ -15,20 +15,22 @@ type OffsetFetchRequest struct {
 
 // Decode reads an OffsetFetch v7 request body.
 func (q *OffsetFetchRequest) Decode(r *Reader, version int16) error {
-	q.GroupID = r.String()
-	nt := r.ArrayLen()
+	q.GroupID = r.CompactString()
+	nt := r.CompactArrayLen()
 	if nt < 0 {
 		q.AllTopics = true
 	}
 	for i := 0; i < nt && r.Err() == nil; i++ {
-		t := OffsetFetchTopic{Name: r.String()}
-		np := r.ArrayLen()
+		t := OffsetFetchTopic{Name: r.CompactString()}
+		np := r.CompactArrayLen()
 		for j := 0; j < np && r.Err() == nil; j++ {
 			t.Partitions = append(t.Partitions, r.Int32())
 		}
+		r.SkipTaggedFields()
 		q.Topics = append(q.Topics, t)
 	}
 	r.Bool() // require_stable
+	r.SkipTaggedFields()
 	return r.Err()
 }
 
@@ -56,17 +58,20 @@ type OffsetFetchResponse struct {
 // Encode writes an OffsetFetch v7 response body.
 func (p *OffsetFetchResponse) Encode(w *Writer, version int16) {
 	w.Int32(0) // throttle_time_ms
-	w.ArrayLen(len(p.Topics))
+	w.CompactArrayLen(len(p.Topics))
 	for _, t := range p.Topics {
-		w.String(t.Name)
-		w.ArrayLen(len(t.Partitions))
+		w.CompactString(t.Name)
+		w.CompactArrayLen(len(t.Partitions))
 		for _, pt := range t.Partitions {
 			w.Int32(pt.Index)
 			w.Int64(pt.Offset)
 			w.Int32(pt.LeaderEpoch)
-			w.NullableString(pt.Metadata)
+			w.CompactNullableString(pt.Metadata)
 			w.Int16(pt.ErrorCode)
+			w.EmptyTaggedFields()
 		}
+		w.EmptyTaggedFields()
 	}
 	w.Int16(p.ErrorCode)
+	w.EmptyTaggedFields()
 }
