@@ -87,6 +87,18 @@ func (b *Broker) Handle(ctx context.Context, h protocol.RequestHeader, r *protoc
 			return nil, false, nil
 		}
 		resp.Encode(w, h.APIVersion)
+	case protocol.KeyFetch:
+		var q protocol.FetchRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode Fetch: %w", err)
+		}
+		b.fetch(ctx, &q).Encode(w, h.APIVersion)
+	case protocol.KeyListOffsets:
+		var q protocol.ListOffsetsRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode ListOffsets: %w", err)
+		}
+		b.listOffsets(&q).Encode(w, h.APIVersion)
 	default:
 		return nil, false, fmt.Errorf("api key %d not implemented", h.APIKey)
 	}
