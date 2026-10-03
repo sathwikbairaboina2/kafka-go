@@ -159,8 +159,10 @@ func (p *Partition) Append(batch []byte, h record.Header) (int64, error) {
 	}
 	act := p.active()
 	if act.size > 0 && act.size+int64(len(batch)) > p.cfg.SegmentBytes {
-		if err := act.sync(); err != nil {
-			return 0, fmt.Errorf("sync segment before roll: %w", err)
+		if p.cfg.Fsync != FsyncNever {
+			if err := act.sync(); err != nil {
+				return 0, fmt.Errorf("sync segment before roll: %w", err)
+			}
 		}
 		s, err := createSegment(p.dir, act.next, p.cfg.IndexIntervalBytes)
 		if err != nil {
