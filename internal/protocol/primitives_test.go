@@ -142,7 +142,7 @@ func TestHostileArrayLen(t *testing.T) {
 
 func TestStringNegativeLengthMalformed(t *testing.T) {
 	r := NewReader([]byte{0xff, 0xff})
-	r.String()
+	_ = r.String()
 	if !errors.Is(r.Err(), ErrMalformed) {
 		t.Fatalf("err = %v", r.Err())
 	}
@@ -189,7 +189,7 @@ func FuzzReader(f *testing.F) {
 		r.Bool()
 		r.Uvarint()
 		r.Varint()
-		r.String()
+		_ = r.String()
 		r.NullableString()
 		r.CompactString()
 		r.CompactNullableString()
