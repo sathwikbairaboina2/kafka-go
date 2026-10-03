@@ -1,0 +1,19 @@
+# Build output and local data
+/bin/
+/data/
+*.test
+*.out
+/tmp/
+
+# Go fuzz cache (committed corpus lives in testdata/fuzz)
+/.cache/
+
+# Secrets
+.env
+.env.*
+!.env*.example
+
+# Harness-local state
+.superpowers/
+.claude/
+.codex/
