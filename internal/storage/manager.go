@@ -34,6 +34,15 @@ func NewManager(dataDir string, cfg Config, clock func() time.Time) *Manager {
 
 // Ensure opens or creates <dataDir>/<topic>-<p> for every partition of the topic. It is idempotent.
 func (m *Manager) Ensure(topic string, partitions int32) error {
+	m.mu.RLock()
+	all := true
+	for i := int32(0); i < partitions && all; i++ {
+		_, all = m.parts[TopicPartition{topic, i}]
+	}
+	m.mu.RUnlock()
+	if all {
+		return nil
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for i := int32(0); i < partitions; i++ {

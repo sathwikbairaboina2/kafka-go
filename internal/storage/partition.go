@@ -152,21 +152,44 @@ func (p *Partition) active() *segment { return p.segments[len(p.segments)-1] }
 // Append sets the batch's base offset, writes it and returns that offset. Callers pass batches that
 // record.Parse accepted. It rolls first when the active segment is non-empty and would exceed SegmentBytes.
 func (p *Partition) Append(batch []byte, h record.Header) (int64, error) {
+	return p.AppendMany([][]byte{batch}, []record.Header{h})
+}
+
+// AppendMany appends several validated batches under one lock, so their offsets are contiguous, and
+// returns the offset of the first. With FsyncAlways it syncs once at the end.
+func (p *Partition) AppendMany(batches [][]byte, hs []record.Header) (int64, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.closed {
 		return 0, ErrClosed
 	}
+	first := p.active().next
+	for i, batch := range batches {
+		if err := p.appendLocked(batch, hs[i]); err != nil {
+			return 0, err
+		}
+	}
+	if p.cfg.Fsync == FsyncAlways {
+		if err := p.active().sync(); err != nil {
+			return 0, fmt.Errorf("fsync: %w", err)
+		}
+	}
+	close(p.wake)
+	p.wake = make(chan struct{})
+	return first, nil
+}
+
+func (p *Partition) appendLocked(batch []byte, h record.Header) error {
 	act := p.active()
 	if act.size > 0 && act.size+int64(len(batch)) > p.cfg.SegmentBytes {
 		if p.cfg.Fsync != FsyncNever {
 			if err := act.sync(); err != nil {
-				return 0, fmt.Errorf("sync segment before roll: %w", err)
+				return fmt.Errorf("sync segment before roll: %w", err)
 			}
 		}
 		s, err := createSegment(p.dir, act.next, p.cfg.IndexIntervalBytes)
 		if err != nil {
-			return 0, err
+			return err
 		}
 		p.segments = append(p.segments, s)
 		act = s
@@ -174,17 +197,7 @@ func (p *Partition) Append(batch []byte, h record.Header) (int64, error) {
 	base := act.next
 	record.SetBaseOffset(batch, base)
 	h.BaseOffset = base
-	if err := act.append(batch, h); err != nil {
-		return 0, err
-	}
-	if p.cfg.Fsync == FsyncAlways {
-		if err := act.sync(); err != nil {
-			return 0, fmt.Errorf("fsync: %w", err)
-		}
-	}
-	close(p.wake)
-	p.wake = make(chan struct{})
-	return base, nil
+	return act.append(batch, h)
 }
 
 // Wait returns a channel closed by the next Append. Take it before reading to avoid lost wakeups.
