@@ -2,8 +2,10 @@ package broker
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
+	"github.com/sathwikbairaboina2/kafka-go/internal/group"
 	"github.com/sathwikbairaboina2/kafka-go/internal/meta"
 	"github.com/sathwikbairaboina2/kafka-go/internal/protocol"
 	"github.com/sathwikbairaboina2/kafka-go/internal/storage"
@@ -11,10 +13,11 @@ import (
 )
 
 type env struct {
-	b    *Broker
-	meta *meta.Store
-	logs *storage.Manager
-	corr int32
+	b     *Broker
+	meta  *meta.Store
+	logs  *storage.Manager
+	corr  atomic.Int32
+	coord *group.Coordinator
 }
 
 func newEnv(t testing.TB, mutate ...func(*Config)) *env {
@@ -30,15 +33,22 @@ func newEnv(t testing.TB, mutate ...func(*Config)) *env {
 	for _, m := range mutate {
 		m(&cfg)
 	}
-	return &env{b: New(cfg, ms, lm), meta: ms, logs: lm}
+	store, err := group.OpenOffsetStore(dir+"/__offsets", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	coord := group.NewCoordinator(store, nil)
+	b := New(cfg, ms, lm)
+	b.SetCoordinator(coord)
+	return &env{b: b, meta: ms, logs: lm, coord: coord}
 }
 
 // call encodes req with kmsg at the broker's supported version, runs the handler and returns the raw body.
 func (e *env) call(t testing.TB, req kmsg.Request) ([]byte, bool) {
 	t.Helper()
 	req.SetVersion(protocol.Supported[req.Key()].Max)
-	e.corr++
-	frame := kmsg.NewRequestFormatter(kmsg.FormatterClientID("test")).AppendRequest(nil, req, e.corr)
+	frame := kmsg.NewRequestFormatter(kmsg.FormatterClientID("test")).AppendRequest(nil, req, e.corr.Add(1))
 	r := protocol.NewReader(frame[4:])
 	h, err := protocol.ParseRequestHeader(r)
 	if err != nil {

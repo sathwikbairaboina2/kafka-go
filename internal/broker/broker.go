@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sathwikbairaboina2/kafka-go/internal/group"
 	"github.com/sathwikbairaboina2/kafka-go/internal/meta"
 	"github.com/sathwikbairaboina2/kafka-go/internal/protocol"
 	"github.com/sathwikbairaboina2/kafka-go/internal/storage"
@@ -26,9 +27,10 @@ type Config struct {
 
 // Broker serves the supported Kafka APIs for a single node.
 type Broker struct {
-	cfg  Config
-	meta *meta.Store
-	logs *storage.Manager
+	cfg    Config
+	meta   *meta.Store
+	logs   *storage.Manager
+	groups *group.Coordinator
 }
 
 // New returns a Broker over the given topic store and log manager.
@@ -99,6 +101,64 @@ func (b *Broker) Handle(ctx context.Context, h protocol.RequestHeader, r *protoc
 			return nil, false, fmt.Errorf("decode ListOffsets: %w", err)
 		}
 		b.listOffsets(&q).Encode(w, h.APIVersion)
+	case protocol.KeyFindCoordinator:
+		var q protocol.FindCoordinatorRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode FindCoordinator: %w", err)
+		}
+		b.findCoordinator(&q).Encode(w, h.APIVersion)
+	case protocol.KeyJoinGroup:
+		var q protocol.JoinGroupRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode JoinGroup: %w", err)
+		}
+		client := ""
+		if h.ClientID != nil {
+			client = *h.ClientID
+		}
+		resp, err := b.joinGroup(ctx, client, &q)
+		if err != nil {
+			return nil, false, err
+		}
+		resp.Encode(w, h.APIVersion)
+	case protocol.KeySyncGroup:
+		var q protocol.SyncGroupRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode SyncGroup: %w", err)
+		}
+		resp, err := b.syncGroup(ctx, &q)
+		if err != nil {
+			return nil, false, err
+		}
+		resp.Encode(w, h.APIVersion)
+	case protocol.KeyHeartbeat:
+		var q protocol.HeartbeatRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode Heartbeat: %w", err)
+		}
+		b.heartbeat(&q).Encode(w, h.APIVersion)
+	case protocol.KeyLeaveGroup:
+		var q protocol.LeaveGroupRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode LeaveGroup: %w", err)
+		}
+		b.leaveGroup(&q).Encode(w, h.APIVersion)
+	case protocol.KeyOffsetCommit:
+		var q protocol.OffsetCommitRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode OffsetCommit: %w", err)
+		}
+		resp, err := b.offsetCommit(&q)
+		if err != nil {
+			return nil, false, err
+		}
+		resp.Encode(w, h.APIVersion)
+	case protocol.KeyOffsetFetch:
+		var q protocol.OffsetFetchRequest
+		if err := q.Decode(r, h.APIVersion); err != nil {
+			return nil, false, fmt.Errorf("decode OffsetFetch: %w", err)
+		}
+		b.offsetFetch(&q).Encode(w, h.APIVersion)
 	default:
 		return nil, false, fmt.Errorf("api key %d not implemented", h.APIKey)
 	}
