@@ -1,0 +1,55 @@
+{
+  "label": "kgod-always",
+  "config": {
+    "brokers": "kafka-go-kgod:9092",
+    "topic": "bench",
+    "record_bytes": 1024,
+    "runs": 3,
+    "clients": 4,
+    "label": "kgod-always",
+    "duration_s": 30,
+    "warmup_s": 3,
+    "go": "go1.26.8",
+    "cpus": 24,
+    "goos": "linux",
+    "date": "2026-10-04T01:16:23Z"
+  },
+  "runs": [
+    {
+      "records": 429082,
+      "records_per_s": 14302.733333333334,
+      "mb_per_s": 14.645998933333335,
+      "p50_ms": 2036.140263,
+      "p99_ms": 11615.772669,
+      "p999_ms": 11615.772669,
+      "errors": 0
+    },
+    {
+      "records": 491127,
+      "records_per_s": 16370.9,
+      "mb_per_s": 16.7638016,
+      "p50_ms": 1861.72413,
+      "p99_ms": 9614.838682,
+      "p999_ms": 9614.838682,
+      "errors": 0
+    },
+    {
+      "records": 829790,
+      "records_per_s": 27659.666666666668,
+      "mb_per_s": 28.32349866666667,
+      "p50_ms": 1395.068357,
+      "p99_ms": 2363.895635,
+      "p999_ms": 2559.760239,
+      "errors": 0
+    }
+  ],
+  "median": {
+    "records": 491127,
+    "records_per_s": 16370.9,
+    "mb_per_s": 16.7638016,
+    "p50_ms": 1861.72413,
+    "p99_ms": 9614.838682,
+    "p999_ms": 9614.838682,
+    "errors": 0
+  }
+}
