@@ -12,7 +12,7 @@ kgod: 2228.9 MB/s produce (237% of Apache Kafka 4.3.1 on the same machine), p99 
 | **2.2 GB/s produce** | `bench/results/` |
 | **0 acked lost / 40 kill -9** | `bench/results/` |
 
-The ratio is noisy. Kafka measured 926-1034 MB/s in this run and 1557-2051 MB/s in an earlier run on the same machine (see Benchmark). Read it as "same order of magnitude", not as a precise factor.
+The ratio is noisy. kgod's three runs ranged from 680 to 4126 MB/s, and Kafka measured 926-1034 MB/s in this run and 1557-2051 MB/s in an earlier run on the same machine (see Benchmark). Read it as "same order of magnitude", not as a precise factor.
 
 A Kafka-compatible broker written in Go (standard library only). Real clients (kcat 1.7.1, franz-go) produce, consume in groups and commit against it.
 
@@ -105,7 +105,7 @@ docker: 29.5.3
 date: 2026-10-04T01:06:41Z
 ```
 
-Fairness: both brokers run on named volumes in the same Docker VM. Kafka uses defaults (no fsync, replication factor 1). kgod uses `--fsync never` for the headline and `--fsync always` as the durability-cost row. The load generator shares the VM. Run-to-run noise is large: Kafka's three runs were 1034, 940 and 926 MB/s in this run, and 1960, 2051 and 1557 MB/s in an earlier discarded run on the same machine. Read the ratio as "same order of magnitude, kgod ahead on this setup", not as a precise factor. kgod does no replication and no fsync in the headline row.
+Fairness: both brokers run on named volumes in the same Docker VM. Kafka uses defaults (no fsync, replication factor 1). kgod uses `--fsync never` for the headline and `--fsync always` as the durability-cost row. The load generator shares the VM. Run-to-run noise is large: kgod's three `fsync never` runs were 2229, 680 and 4126 MB/s; Kafka's three runs were 1034, 940 and 926 MB/s in this run, and 1960, 2051 and 1557 MB/s in an earlier discarded run on the same machine. Read the ratio as "same order of magnitude, kgod ahead on this setup", not as a precise factor. kgod does no replication and no fsync in the headline row.
 
 ## Crash test
 
