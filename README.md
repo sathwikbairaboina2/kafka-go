@@ -5,7 +5,7 @@
 kgod: 2228.9 MB/s produce (237% of Apache Kafka 4.3.1 on the same machine), p99 94.1 ms; 0 of 1859904 acked records lost across 40 kill -9 restarts.
 
 <!-- readme-header -->
-[![CI](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml/badge.svg)](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml) ![Go](https://img.shields.io/badge/-Go-555) ![stdlib only](https://img.shields.io/badge/-stdlib%20only-555)
+[![CI](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml/badge.svg)](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) ![Go](https://img.shields.io/badge/-Go-555) ![stdlib only](https://img.shields.io/badge/-stdlib%20only-555)
 
 | Measured | Source |
 |---|---|
