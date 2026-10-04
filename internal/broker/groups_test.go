@@ -3,6 +3,7 @@ package broker
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sathwikbairaboina2/kafka-go/internal/protocol"
 	"github.com/twmb/franz-go/pkg/kmsg"
@@ -86,11 +87,18 @@ func TestTwoMemberJoinSyncHeartbeatLeave(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	results := make([]kmsg.JoinGroupResponse, 2)
-	for i, m := range []string{a, b} {
+	// B must be waiting before A rejoins, otherwise A completes a generation alone
+	for i, m := range []string{b, a} {
 		wg.Add(1)
 		go func() { defer wg.Done(); results[i] = doJoin(t, e, "g", m) }()
+		if i == 0 {
+			for e.coord.Heartbeat("g", a, 1) != protocol.ErrRebalanceInProgress {
+				time.Sleep(time.Millisecond)
+			}
+		}
 	}
 	wg.Wait()
+	results[0], results[1] = results[1], results[0]
 	for i, r := range results {
 		if r.ErrorCode != 0 || r.Generation != 2 || r.LeaderID != a || *r.Protocol != "range" {
 			t.Fatalf("join %d = %+v", i, r)
