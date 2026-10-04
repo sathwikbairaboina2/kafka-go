@@ -118,8 +118,13 @@ func OpenPartition(dir string, cfg Config) (*Partition, error) {
 	}
 	sort.Slice(bases, func(i, j int) bool { return bases[i] < bases[j] })
 	p := &Partition{dir: dir, cfg: cfg, wake: make(chan struct{})}
-	for _, b := range bases {
-		s, err := openSegment(dir, b, cfg.IndexIntervalBytes)
+	for i, b := range bases {
+		// The last (active) segment is fully scanned by recover, so it skips the header scan.
+		open := openSegment
+		if i == len(bases)-1 {
+			open = openSegmentFiles
+		}
+		s, err := open(dir, b, cfg.IndexIntervalBytes)
 		if err != nil {
 			p.closeSegments()
 			return nil, err

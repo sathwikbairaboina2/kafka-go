@@ -24,6 +24,7 @@ func scanSegment(s *segment) scanResult {
 	res := scanResult{next: s.base, maxTs: -1}
 	br := bufio.NewReaderSize(io.NewSectionReader(s.log, 0, s.size), 256<<10)
 	var prefix [12]byte
+	var buf []byte
 	for res.end+12 <= s.size {
 		if _, err := io.ReadFull(br, prefix[:]); err != nil {
 			break
@@ -32,7 +33,10 @@ func scanSegment(s *segment) scanResult {
 		if err != nil || res.end+size > s.size {
 			break
 		}
-		buf := make([]byte, size)
+		if int64(cap(buf)) < size {
+			buf = make([]byte, size)
+		}
+		buf = buf[:size]
 		copy(buf, prefix[:])
 		if _, err := io.ReadFull(br, buf[12:]); err != nil {
 			break

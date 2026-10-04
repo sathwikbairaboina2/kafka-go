@@ -1,0 +1,32 @@
+{
+  "runs": [
+    {
+      "mode": "always",
+      "iterations": 20,
+      "acked": 724304,
+      "lost": 0,
+      "verify_ok": true,
+      "recovery_ms_p50": 191,
+      "recovery_ms_max": 422,
+      "seed": 1791073819696541585,
+      "go": "go1.26.8",
+      "cpus": 24,
+      "goos": "linux",
+      "date": "2026-10-04T00:30:25Z"
+    },
+    {
+      "mode": "never",
+      "iterations": 20,
+      "acked": 1135600,
+      "lost": 0,
+      "verify_ok": true,
+      "recovery_ms_p50": 94,
+      "recovery_ms_max": 275,
+      "seed": 1791073819696541586,
+      "go": "go1.26.8",
+      "cpus": 24,
+      "goos": "linux",
+      "date": "2026-10-04T00:30:51Z"
+    }
+  ]
+}

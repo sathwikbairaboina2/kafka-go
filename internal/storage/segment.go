@@ -39,6 +39,18 @@ func createSegment(dir string, base int64, interval int64) (*segment, error) {
 // openSegment opens (creating if missing) the files for base, loads the index and scans batch headers
 // to find the next offset and the maximum timestamp. The scan trusts the headers; recovery validates.
 func openSegment(dir string, base int64, interval int64) (*segment, error) {
+	s, err := openSegmentFiles(dir, base, interval)
+	if err != nil {
+		return nil, err
+	}
+	s.headerScan()
+	s.resetSinceIndex()
+	return s, nil
+}
+
+// openSegmentFiles opens the files and loads the index without scanning the log. The caller must set next,
+// maxTimestamp and sinceIndex, either with headerScan or by recovering the segment.
+func openSegmentFiles(dir string, base int64, interval int64) (*segment, error) {
 	s := &segment{base: base, dir: dir, interval: interval, maxTimestamp: -1}
 	var err error
 	if s.log, err = os.OpenFile(s.logPath(), os.O_RDWR|os.O_CREATE, 0o644); err != nil {
@@ -60,8 +72,6 @@ func openSegment(dir string, base int64, interval int64) (*segment, error) {
 		return nil, fmt.Errorf("read segment index: %w", err)
 	}
 	s.index = decodeIndex(raw)
-	s.headerScan()
-	s.resetSinceIndex()
 	return s, nil
 }
 
