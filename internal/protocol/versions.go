@@ -20,18 +20,20 @@ const (
 type VersionRange struct{ Min, Max int16 }
 
 // Supported is the single source for the ApiVersions response and the request gate (ADR 0004).
+// Produce 3-7 and Fetch 4-11 are ranges because librdkafka only selects message format v2 when the broker
+// advertises Produce v3 and Fetch v4 (see the ledger ruling and ADR 0004).
 var Supported = map[int16]VersionRange{
-	KeyProduce:         {7, 7},
-	KeyFetch:           {11, 11},
+	KeyProduce:         {3, 7},
+	KeyFetch:           {4, 11},
 	KeyListOffsets:     {2, 2},
 	KeyMetadata:        {4, 4},
-	KeyOffsetCommit:    {7, 7},
-	KeyOffsetFetch:     {7, 7},
-	KeyFindCoordinator: {2, 2},
-	KeyJoinGroup:       {5, 5},
-	KeyHeartbeat:       {3, 3},
-	KeyLeaveGroup:      {1, 1},
-	KeySyncGroup:       {3, 3},
+	KeyOffsetCommit:    {2, 7},
+	KeyOffsetFetch:     {1, 7},
+	KeyFindCoordinator: {0, 2},
+	KeyJoinGroup:       {0, 5},
+	KeyHeartbeat:       {0, 3},
+	KeyLeaveGroup:      {0, 1},
+	KeySyncGroup:       {0, 3},
 	KeyApiVersions:     {0, 3},
 }
 

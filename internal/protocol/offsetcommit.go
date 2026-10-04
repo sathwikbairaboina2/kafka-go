@@ -14,7 +14,8 @@ type CommitTopic struct {
 	Partitions []CommitPartition
 }
 
-// OffsetCommitRequest is the OffsetCommit v7 request.
+// OffsetCommitRequest is the OffsetCommit v2-v7 request. v2-v4 carry a retention time (ignored), v6 adds
+// the leader epoch (-1 before) and v7 the group instance id.
 type OffsetCommitRequest struct {
 	GroupID         string
 	GenerationID    int32
@@ -23,20 +24,28 @@ type OffsetCommitRequest struct {
 	Topics          []CommitTopic
 }
 
-// Decode reads an OffsetCommit v7 request body.
+// Decode reads an OffsetCommit request body.
 func (q *OffsetCommitRequest) Decode(r *Reader, version int16) error {
 	q.GroupID = r.String()
 	q.GenerationID = r.Int32()
 	q.MemberID = r.String()
-	q.GroupInstanceID = r.NullableString()
+	if version >= 7 {
+		q.GroupInstanceID = r.NullableString()
+	}
+	if version <= 4 {
+		r.Int64() // retention_time_ms
+	}
 	nt := r.ArrayLen()
 	for i := 0; i < nt && r.Err() == nil; i++ {
 		t := CommitTopic{Name: r.String()}
 		np := r.ArrayLen()
 		for j := 0; j < np && r.Err() == nil; j++ {
-			t.Partitions = append(t.Partitions, CommitPartition{
-				Index: r.Int32(), Offset: r.Int64(), LeaderEpoch: r.Int32(), Metadata: r.NullableString(),
-			})
+			p := CommitPartition{Index: r.Int32(), Offset: r.Int64(), LeaderEpoch: -1}
+			if version >= 6 {
+				p.LeaderEpoch = r.Int32()
+			}
+			p.Metadata = r.NullableString()
+			t.Partitions = append(t.Partitions, p)
 		}
 		q.Topics = append(q.Topics, t)
 	}
@@ -55,12 +64,14 @@ type CommitTopicResponse struct {
 	Partitions []CommitPartitionResponse
 }
 
-// OffsetCommitResponse is the OffsetCommit v7 response.
+// OffsetCommitResponse is the OffsetCommit v2-v7 response.
 type OffsetCommitResponse struct{ Topics []CommitTopicResponse }
 
-// Encode writes an OffsetCommit v7 response body.
+// Encode writes an OffsetCommit response body; throttle exists from v3.
 func (p *OffsetCommitResponse) Encode(w *Writer, version int16) {
-	w.Int32(0) // throttle_time_ms
+	if version >= 3 {
+		w.Int32(0) // throttle_time_ms
+	}
 	w.ArrayLen(len(p.Topics))
 	for _, t := range p.Topics {
 		w.String(t.Name)

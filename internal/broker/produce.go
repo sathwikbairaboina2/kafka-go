@@ -1,6 +1,8 @@
 package broker
 
 import (
+	"log/slog"
+
 	"github.com/sathwikbairaboina2/kafka-go/internal/protocol"
 	"github.com/sathwikbairaboina2/kafka-go/internal/record"
 )
@@ -43,6 +45,7 @@ func (b *Broker) produceOne(topic string, p protocol.ProducePartition, pr *proto
 	}
 	batches, err := record.Split(p.Records)
 	if err != nil {
+		slog.Warn("rejecting produce records", "topic", topic, "partition", p.Index, "bytes", len(p.Records), "err", err)
 		pr.ErrorCode = protocol.ErrCorruptMessage
 		return
 	}
@@ -50,6 +53,7 @@ func (b *Broker) produceOne(topic string, p protocol.ProducePartition, pr *proto
 	for i, batch := range batches {
 		h, err := record.Parse(batch)
 		if err != nil {
+			slog.Warn("rejecting produce batch", "topic", topic, "partition", p.Index, "bytes", len(batch), "err", err)
 			pr.ErrorCode = protocol.ErrCorruptMessage
 			return
 		}

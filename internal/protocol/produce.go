@@ -12,7 +12,7 @@ type ProduceTopic struct {
 	Partitions []ProducePartition
 }
 
-// ProduceRequest is the Produce v7 request.
+// ProduceRequest is the Produce v3-v7 request (the request layout is identical across those versions).
 type ProduceRequest struct {
 	TransactionalID *string
 	Acks            int16
@@ -20,7 +20,7 @@ type ProduceRequest struct {
 	Topics          []ProduceTopic
 }
 
-// Decode reads a Produce v7 request body.
+// Decode reads a Produce v3-v7 request body.
 func (q *ProduceRequest) Decode(r *Reader, version int16) error {
 	q.TransactionalID = r.NullableString()
 	q.Acks = r.Int16()
@@ -56,10 +56,10 @@ type ProduceTopicResponse struct {
 	Partitions []ProducePartitionResponse
 }
 
-// ProduceResponse is the Produce v7 response.
+// ProduceResponse is the Produce v3-v7 response.
 type ProduceResponse struct{ Topics []ProduceTopicResponse }
 
-// Encode writes a Produce v7 response body.
+// Encode writes a Produce response body; log_start_offset exists from v5.
 func (p *ProduceResponse) Encode(w *Writer, version int16) {
 	w.ArrayLen(len(p.Topics))
 	for _, t := range p.Topics {
@@ -70,7 +70,9 @@ func (p *ProduceResponse) Encode(w *Writer, version int16) {
 			w.Int16(pt.ErrorCode)
 			w.Int64(pt.BaseOffset)
 			w.Int64(pt.LogAppendTimeMs)
-			w.Int64(pt.LogStartOffset)
+			if version >= 5 {
+				w.Int64(pt.LogStartOffset)
+			}
 		}
 	}
 	w.Int32(0) // throttle_time_ms

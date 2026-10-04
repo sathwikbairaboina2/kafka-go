@@ -116,7 +116,7 @@ func (b *Broker) Handle(ctx context.Context, h protocol.RequestHeader, r *protoc
 		if h.ClientID != nil {
 			client = *h.ClientID
 		}
-		resp, err := b.joinGroup(ctx, client, &q)
+		resp, err := b.joinGroup(ctx, client, h.APIVersion, &q)
 		if err != nil {
 			return nil, false, err
 		}

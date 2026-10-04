@@ -47,7 +47,13 @@ func newEnv(t testing.TB, mutate ...func(*Config)) *env {
 // call encodes req with kmsg at the broker's supported version, runs the handler and returns the raw body.
 func (e *env) call(t testing.TB, req kmsg.Request) ([]byte, bool) {
 	t.Helper()
-	req.SetVersion(protocol.Supported[req.Key()].Max)
+	return e.callV(t, req, protocol.Supported[req.Key()].Max)
+}
+
+// callV is call at an explicit request version.
+func (e *env) callV(t testing.TB, req kmsg.Request, v int16) ([]byte, bool) {
+	t.Helper()
+	req.SetVersion(v)
 	frame := kmsg.NewRequestFormatter(kmsg.FormatterClientID("test")).AppendRequest(nil, req, e.corr.Add(1))
 	r := protocol.NewReader(frame[4:])
 	h, err := protocol.ParseRequestHeader(r)

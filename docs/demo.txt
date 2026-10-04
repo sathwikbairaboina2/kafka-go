@@ -1,0 +1,30 @@
+kafka-go demo: kgod is a Kafka broker written in Go; kcat 1.7.1 (librdkafka 1.8.2) is the client.
+
+$ kcat -b kafka-go-kgod:9092 -L | grep topic
+  topic "bench" with 8 partitions:
+  topic "compat-kcat" with 3 partitions:
+  topic "demo" with 3 partitions:
+
+$ printf 'order-1:coffee\norder-2:tea\norder-3:soda\norder-4:water\norder-5:juice\n' | kcat -b kafka-go-kgod:9092 -P -t demo -K:
+
+$ kcat -b kafka-go-kgod:9092 -C -t demo -o beginning -e -f '%k=%s\n' | sort
+order-1=coffee
+order-2=tea
+order-3=soda
+order-4=water
+order-5=juice
+
+$ docker kill -s KILL kafka-go-kgod        # kill -9 the broker, no clean shutdown
+kafka-go-kgod
+
+$ docker compose up -d kgod                # restart on the same data volume
+
+$ kcat -b kafka-go-kgod:9092 -C -t demo -o beginning -e -f '%k=%s\n' | sort
+order-1=coffee
+order-2=tea
+order-3=soda
+order-4=water
+order-5=juice
+
+$ kgoctl verify-log /data                   # checks every CRC, offset and index entry on disk
+OK partitions=14 segments=14 batches=3 records=5

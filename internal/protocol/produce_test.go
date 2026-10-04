@@ -16,10 +16,17 @@ func TestProduceRequestOracle(t *testing.T) {
 		{Topic: "a", Partitions: []kmsg.ProduceRequestTopicPartition{{Partition: 0, Records: rec}, {Partition: 1}}},
 		{Topic: "b", Partitions: []kmsg.ProduceRequestTopicPartition{{Partition: 2, Records: rec}, {Partition: 3}}},
 	}
+	for v := int16(3); v <= 7; v++ {
+		checkProduceRequest(t, req, v, rec)
+	}
+}
+
+func checkProduceRequest(t *testing.T, req *kmsg.ProduceRequest, v int16, rec []byte) {
+	t.Helper()
 	var q ProduceRequest
-	r := NewReader(kmsgBody(req, 7))
-	if err := q.Decode(r, 7); err != nil {
-		t.Fatal(err)
+	r := NewReader(kmsgBody(req, v))
+	if err := q.Decode(r, v); err != nil {
+		t.Fatalf("v%d: %v", v, err)
 	}
 	mustConsume(t, r)
 	if q.TransactionalID != nil || q.Acks != -1 || q.TimeoutMs != 1500 || len(q.Topics) != 2 {
@@ -44,19 +51,25 @@ func TestProduceResponseOracle(t *testing.T) {
 		}},
 		{Name: "b", Partitions: []ProducePartitionResponse{{Index: 5, BaseOffset: 1}}},
 	}}
-	w := NewWriter(0)
-	resp.Encode(w, 7)
-	var out kmsg.ProduceResponse
-	kmsgDecode(t, &out, 7, w.Buf())
-	if len(out.Topics) != 2 || out.Topics[0].Topic != "a" || len(out.Topics[0].Partitions) != 2 {
-		t.Fatalf("topics = %+v", out.Topics)
-	}
-	p := out.Topics[0].Partitions[0]
-	if p.Partition != 0 || p.BaseOffset != 42 || p.LogAppendTime != -1 || p.LogStartOffset != 7 || p.ErrorCode != 0 {
-		t.Fatalf("p0 = %+v", p)
-	}
-	if out.Topics[0].Partitions[1].ErrorCode != ErrCorruptMessage || out.Topics[1].Partitions[0].Partition != 5 {
-		t.Fatalf("others = %+v", out.Topics)
+	for v := int16(3); v <= 7; v++ {
+		w := NewWriter(0)
+		resp.Encode(w, v)
+		var out kmsg.ProduceResponse
+		kmsgDecode(t, &out, v, w.Buf())
+		if len(out.Topics) != 2 || out.Topics[0].Topic != "a" || len(out.Topics[0].Partitions) != 2 {
+			t.Fatalf("v%d topics = %+v", v, out.Topics)
+		}
+		p := out.Topics[0].Partitions[0]
+		wantStart := int64(7)
+		if v < 5 {
+			wantStart = -1 // field absent before v5, kmsg defaults it to -1
+		}
+		if p.Partition != 0 || p.BaseOffset != 42 || p.LogAppendTime != -1 || p.LogStartOffset != wantStart || p.ErrorCode != 0 {
+			t.Fatalf("v%d p0 = %+v", v, p)
+		}
+		if out.Topics[0].Partitions[1].ErrorCode != ErrCorruptMessage || out.Topics[1].Partitions[0].Partition != 5 {
+			t.Fatalf("v%d others = %+v", v, out.Topics)
+		}
 	}
 }
 

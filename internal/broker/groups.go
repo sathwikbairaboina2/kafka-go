@@ -27,7 +27,7 @@ func (b *Broker) findCoordinator(q *protocol.FindCoordinatorRequest) *protocol.F
 	return &protocol.FindCoordinatorResponse{NodeID: b.cfg.NodeID, Host: b.cfg.Host, Port: b.cfg.Port}
 }
 
-func (b *Broker) joinGroup(ctx context.Context, clientID string, q *protocol.JoinGroupRequest) (*protocol.JoinGroupResponse, error) {
+func (b *Broker) joinGroup(ctx context.Context, clientID string, version int16, q *protocol.JoinGroupRequest) (*protocol.JoinGroupResponse, error) {
 	fail := func(code int16) (*protocol.JoinGroupResponse, error) {
 		return &protocol.JoinGroupResponse{ErrorCode: code, GenerationID: -1, MemberID: q.MemberID}, nil
 	}
@@ -52,6 +52,11 @@ func (b *Broker) joinGroup(ctx context.Context, clientID string, q *protocol.Joi
 		req.Protocols = append(req.Protocols, group.Protocol{Name: p.Name, Metadata: p.Metadata})
 	}
 	res := b.groups.Join(ctx, q.GroupID, req)
+	if version < 4 && q.MemberID == "" && res.Err == protocol.ErrMemberIDRequired {
+		// Before v4 clients do not know the MEMBER_ID_REQUIRED round trip: assign the id and join in one request.
+		req.MemberID = res.MemberID
+		res = b.groups.Join(ctx, q.GroupID, req)
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

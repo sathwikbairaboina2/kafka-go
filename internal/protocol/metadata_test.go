@@ -86,35 +86,37 @@ func TestMetadataResponseOracle(t *testing.T) {
 }
 
 func TestFindCoordinatorOracle(t *testing.T) {
-	req := kmsg.NewPtrFindCoordinatorRequest()
-	req.CoordinatorKey = "grp"
-	req.CoordinatorType = 0
-	var q FindCoordinatorRequest
-	r := NewReader(kmsgBody(req, 2))
-	if err := q.Decode(r, 2); err != nil {
-		t.Fatal(err)
-	}
-	mustConsume(t, r)
-	if q.Key != "grp" || q.KeyType != 0 {
-		t.Fatalf("req = %+v", q)
-	}
+	for v := int16(0); v <= 2; v++ {
+		req := kmsg.NewPtrFindCoordinatorRequest()
+		req.CoordinatorKey = "grp"
+		req.CoordinatorType = 0
+		var q FindCoordinatorRequest
+		r := NewReader(kmsgBody(req, v))
+		if err := q.Decode(r, v); err != nil {
+			t.Fatalf("v%d: %v", v, err)
+		}
+		mustConsume(t, r)
+		if q.Key != "grp" || q.KeyType != 0 {
+			t.Fatalf("v%d req = %+v", v, q)
+		}
 
-	resp := FindCoordinatorResponse{NodeID: 1, Host: "h", Port: 9092}
-	w := NewWriter(0)
-	resp.Encode(w, 2)
-	var out kmsg.FindCoordinatorResponse
-	kmsgDecode(t, &out, 2, w.Buf())
-	if out.ErrorCode != 0 || out.NodeID != 1 || out.Host != "h" || out.Port != 9092 {
-		t.Fatalf("resp = %+v", out)
-	}
+		resp := FindCoordinatorResponse{NodeID: 1, Host: "h", Port: 9092}
+		w := NewWriter(0)
+		resp.Encode(w, v)
+		var out kmsg.FindCoordinatorResponse
+		kmsgDecode(t, &out, v, w.Buf())
+		if out.ErrorCode != 0 || out.NodeID != 1 || out.Host != "h" || out.Port != 9092 {
+			t.Fatalf("v%d resp = %+v", v, out)
+		}
 
-	msg := "nope"
-	resp = FindCoordinatorResponse{ErrorCode: ErrInvalidGroupID, ErrorMessage: &msg}
-	w = NewWriter(0)
-	resp.Encode(w, 2)
-	out = kmsg.FindCoordinatorResponse{}
-	kmsgDecode(t, &out, 2, w.Buf())
-	if out.ErrorCode != ErrInvalidGroupID || out.ErrorMessage == nil || *out.ErrorMessage != "nope" {
-		t.Fatalf("err resp = %+v", out)
+		msg := "nope"
+		resp = FindCoordinatorResponse{ErrorCode: ErrInvalidGroupID, ErrorMessage: &msg}
+		w = NewWriter(0)
+		resp.Encode(w, v)
+		out = kmsg.FindCoordinatorResponse{}
+		kmsgDecode(t, &out, v, w.Buf())
+		if out.ErrorCode != ErrInvalidGroupID || (v >= 1 && (out.ErrorMessage == nil || *out.ErrorMessage != "nope")) {
+			t.Fatalf("v%d err resp = %+v", v, out)
+		}
 	}
 }

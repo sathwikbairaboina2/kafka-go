@@ -28,10 +28,17 @@ func TestFetchRequestOracle(t *testing.T) {
 	}
 	req.ForgottenTopics = []kmsg.FetchRequestForgottenTopic{{Topic: "old", Partitions: []int32{0, 1}}}
 
+	for v := int16(4); v <= 11; v++ {
+		checkFetchRequest(t, req, v)
+	}
+}
+
+func checkFetchRequest(t *testing.T, req *kmsg.FetchRequest, v int16) {
+	t.Helper()
 	var q FetchRequest
-	r := NewReader(kmsgBody(req, 11))
-	if err := q.Decode(r, 11); err != nil {
-		t.Fatal(err)
+	r := NewReader(kmsgBody(req, v))
+	if err := q.Decode(r, v); err != nil {
+		t.Fatalf("v%d: %v", v, err)
 	}
 	mustConsume(t, r)
 	if q.MaxWaitMs != 500 || q.MinBytes != 1 || q.MaxBytes != 1<<20 || q.IsolationLevel != 1 || q.SessionEpoch != -1 {
@@ -58,15 +65,22 @@ func TestFetchResponseOracle(t *testing.T) {
 			{Index: 2, ErrorCode: ErrOffsetOutOfRange, HighWatermark: -1, LastStableOffset: -1, LogStart: -1},
 		}},
 	}}
+	for v := int16(4); v <= 11; v++ {
+		checkFetchResponse(t, resp, v, rec)
+	}
+}
+
+func checkFetchResponse(t *testing.T, resp FetchResponse, v int16, rec []byte) {
+	t.Helper()
 	w := NewWriter(0)
-	resp.Encode(w, 11)
+	resp.Encode(w, v)
 	var out kmsg.FetchResponse
-	kmsgDecode(t, &out, 11, w.Buf())
+	kmsgDecode(t, &out, v, w.Buf())
 	if out.ErrorCode != 0 || out.SessionID != 0 || len(out.Topics) != 1 || len(out.Topics[0].Partitions) != 3 {
 		t.Fatalf("resp = %+v", out)
 	}
 	p0 := out.Topics[0].Partitions[0]
-	if p0.HighWatermark != 10 || p0.LastStableOffset != 10 || p0.LogStartOffset != 2 || !bytes.Equal(p0.RecordBatches, rec) ||
+	if p0.HighWatermark != 10 || p0.LastStableOffset != 10 || (v >= 5 && p0.LogStartOffset != 2) || !bytes.Equal(p0.RecordBatches, rec) ||
 		p0.PreferredReadReplica != -1 || p0.AbortedTransactions != nil {
 		t.Fatalf("p0 = %+v", p0)
 	}
