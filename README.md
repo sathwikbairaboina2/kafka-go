@@ -2,6 +2,8 @@
 
 kgod: 2228.9 MB/s produce (237% of Apache Kafka 4.3.1 on the same machine), p99 94.1 ms; 0 of 1859904 acked records lost across 40 kill -9 restarts.
 
+The ratio is noisy. Kafka measured 926-1034 MB/s in this run and 1557-2051 MB/s in an earlier run on the same machine (see Benchmark). Read it as "same order of magnitude", not as a precise factor.
+
 A Kafka-compatible broker written in Go (standard library only). Real clients (kcat 1.7.1, franz-go) produce, consume in groups and commit against it.
 
 ```
@@ -101,14 +103,17 @@ Fairness: both brokers run on named volumes in the same Docker VM. Kafka uses de
 
 ## Quickstart
 
+By default kgod advertises `kafka-go-kgod:9092`, which resolves only on the compose network. For a client on the host, advertise the published port. Use `127.0.0.1`, not `localhost`, so the client does not try IPv6 first.
+
 ```
-docker compose up -d --build kgod
-kcat -b localhost:5380 -L
-printf 'k:v\n' | kcat -b localhost:5380 -P -t demo -K:
-kcat -b localhost:5380 -C -t demo -o beginning -e
-bash scripts/demo.sh
+KGOD_ADVERTISE=127.0.0.1:5380 docker compose up -d --build kgod
+kcat -b 127.0.0.1:5380 -L
+printf 'k:v\n' | kcat -b 127.0.0.1:5380 -P -t demo -K:
+kcat -b 127.0.0.1:5380 -C -t demo -o beginning -e
 docker compose down -v
 ```
+
+If kcat is not installed on the host, run it as `docker run --rm -i --network host edenhill/kcat:1.7.1 -b 127.0.0.1:5380 ...`. The 30-second demo, `bash scripts/demo.sh`, needs only Docker.
 
 ## Run the tests
 
