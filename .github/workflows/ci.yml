@@ -1,0 +1,28 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: sh scripts/check.sh
+      - run: go test -race -count=1 ./...
+      - name: fuzz smoke
+        run: |
+          go test -run '^$' -fuzz '^FuzzReader$' -fuzztime 15s ./internal/protocol
+          go test -run '^$' -fuzz '^FuzzParseBatch$' -fuzztime 15s ./internal/record
+          go test -run '^$' -fuzz '^FuzzRecoverSegment$' -fuzztime 15s ./internal/storage
+      - name: crash smoke
+        run: go run ./bench/crash -iterations 3 -fsync both -out /tmp/crash.json
+  compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t kafka-go/kgod:ci .
+      - run: bash scripts/compat-kcat.sh
