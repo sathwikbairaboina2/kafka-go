@@ -1,6 +1,16 @@
-# kafka-go
+# 📨 kafka-go
+
+> Kafka broker from scratch. Real Kafka clients produce, consume in groups and commit offsets against it.
 
 kgod: 2228.9 MB/s produce (237% of Apache Kafka 4.3.1 on the same machine), p99 94.1 ms; 0 of 1859904 acked records lost across 40 kill -9 restarts.
+
+<!-- readme-header -->
+[![CI](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml/badge.svg)](https://github.com/sathwikbairaboina2/kafka-go/actions/workflows/ci.yml) ![Go](https://img.shields.io/badge/-Go-555) ![stdlib only](https://img.shields.io/badge/-stdlib%20only-555)
+
+| Measured | Source |
+|---|---|
+| **2.2 GB/s produce** | `bench/results/` |
+| **0 acked lost / 40 kill -9** | `bench/results/` |
 
 The ratio is noisy. Kafka measured 926-1034 MB/s in this run and 1557-2051 MB/s in an earlier run on the same machine (see Benchmark). Read it as "same order of magnitude", not as a precise factor.
 
